@@ -1,14 +1,21 @@
 defmodule HomeLed.Entities.SettingsEntitiesTest do
-  @moduledoc "The LED count and colour order knobs against the application's Settings table."
+  @moduledoc "The LED count, colour order and disabled LED knobs against the application's Settings table."
   use ExUnit.Case
 
-  alias HomeLed.Entities.{ColorOrder, LedCount}
+  alias HomeLed.Entities.{ColorOrder, DisabledLeds, LedCount}
   alias HomeLed.Settings
 
   setup do
     count = Settings.led_count()
     order = Settings.color_order()
-    on_exit(fn -> Settings.set_led_count(count) && Settings.set_color_order(order) end)
+    disabled = Settings.disabled_ranges()
+
+    on_exit(fn ->
+      Settings.set_led_count(count)
+      Settings.set_color_order(order)
+      Settings.set_disabled_ranges(disabled)
+    end)
+
     :ok
   end
 
@@ -21,6 +28,7 @@ defmodule HomeLed.Entities.SettingsEntitiesTest do
   test "report the settings at init and write them on command" do
     Settings.set_led_count(7)
     Settings.set_color_order(:bgr)
+    Settings.set_disabled_ranges("2-3")
 
     count = entity(LedCount) |> LedCount.setup()
     assert count.changes[:state] == 7
@@ -29,6 +37,9 @@ defmodule HomeLed.Entities.SettingsEntitiesTest do
 
     assert order.descriptor.options.options ==
              ~w(RGB RBG GRB GBR BRG BGR RGBW RBGW GRBW GBRW BRGW BGRW)
+
+    disabled = entity(DisabledLeds) |> DisabledLeds.setup()
+    assert disabled.changes[:state] == "2-3"
 
     count = LedCount.handle_command(%{state: 12.0}, count)
     assert count.changes[:state] == 12
@@ -41,6 +52,18 @@ defmodule HomeLed.Entities.SettingsEntitiesTest do
     order = ColorOrder.handle_command(%{state: "XYZ"}, order)
     assert Settings.color_order() == :rgb
     assert order.changes[:state] == "RGB"
+
+    disabled = DisabledLeds.handle_command(%{state: "9;1-4 6"}, disabled)
+    assert disabled.changes[:state] == "1-4, 6, 9"
+    assert Settings.disabled_ranges() == [{1, 4}, {6, 6}, {9, 9}]
+
+    disabled = DisabledLeds.handle_command(%{state: "1-4, 4-6"}, disabled)
+    assert disabled.changes[:state] == "1-4, 6, 9"
+    assert Settings.disabled_ranges() == [{1, 4}, {6, 6}, {9, 9}]
+
+    disabled = DisabledLeds.handle_command(%{state: ""}, disabled)
+    assert disabled.changes[:state] == ""
+    assert Settings.disabled_ranges() == []
   end
 
   test "follow the settings when IEx changes them" do
@@ -54,5 +77,10 @@ defmodule HomeLed.Entities.SettingsEntitiesTest do
     Settings.set_color_order(:gbr)
     assert_receive %PropertyTable.Event{property: ["leds", "color_order"]} = order_event
     assert ColorOrder.handle_info(order_event, order).changes[:state] == "GBR"
+
+    disabled = entity(DisabledLeds) |> DisabledLeds.setup()
+    Settings.set_disabled_ranges([{7, 7}])
+    assert_receive %PropertyTable.Event{property: ["leds", "disabled"]} = disabled_event
+    assert DisabledLeds.handle_info(disabled_event, disabled).changes[:state] == "7"
   end
 end

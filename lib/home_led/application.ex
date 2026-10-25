@@ -52,7 +52,8 @@ defmodule HomeLed.Application do
               HomeLed.Entities.StripLight,
               HomeLed.Entities.StripEffect,
               HomeLed.Entities.LedCount,
-              HomeLed.Entities.ColorOrder
+              HomeLed.Entities.ColorOrder,
+              HomeLed.Entities.DisabledLeds
             ] ++
               if(gpio_led, do: [HomeLed.Entities.GpioLight], else: [])
 

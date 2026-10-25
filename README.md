@@ -6,8 +6,9 @@ Nerves firmware for a WS281x LED strip (and, optionally, a plain LED on a GPIO) 
   [Homex](https://github.com/kevinschweikert/homex): an RGB light for the strip
   (`HomeLed.Entities.StripLight`), an effect select next to it
   (`HomeLed.Entities.StripEffect`: Solid, Flicker, Breathe, Rainbow), a number for the LED
-  count and a select for the colour order (`HomeLed.Entities.LedCount`,
-  `HomeLed.Entities.ColorOrder`), and an on/off light for the GPIO LED
+  count, a select for the colour order and a text field for LEDs to leave dark
+  (`HomeLed.Entities.LedCount`, `HomeLed.Entities.ColorOrder`,
+  `HomeLed.Entities.DisabledLeds`), and an on/off light for the GPIO LED
   (`HomeLed.Entities.GpioLight`);
 - a **`:light` capability on the home cluster**, through
   [`home_base`](../home_base) (`Home.Light`): any node in the cluster can lease the strip
@@ -15,7 +16,8 @@ Nerves firmware for a WS281x LED strip (and, optionally, a plain LED on a GPIO) 
 
 The strip is driven over SPI with the raw WS281x bit pattern Fledex uses (4 SPI bits per
 data bit at 3.2 MHz), as in the `creature` firmware: data on MOSI (GPIO 10), `spidev0.0`.
-How many pixels there are and their channel order are **persisted settings**, not config:
+How many pixels there are, their channel order and which of them stay dark are
+**persisted settings**, not config:
 `HomeLed.Settings` is a `PropertyTable` under `/data/home_led`, set from Home Assistant
 or IEx. A device that has never been told defaults to 1 pixel in `:grb` order (WS2812).
 The light's own state (on/off, colour, brightness, effect) is persisted there too, so a
@@ -23,12 +25,16 @@ reboot brings back the last lighting instruction.
 RGBW strips (SK6812 and the like) take one of the four-channel orders, `:grbw` usually;
 the white LED gets the white part of the colour (`min(r, g, b)`), taken out of the three
 colours, so white is white and a saturated colour leaves it dark.
+Disabled LEDs are ranges typed as text, `"5"`, `"3-8"` or `"3-8, 10-200"` (numbered from
+1; commas, semicolons or spaces between ranges; overlapping ranges are rejected and the
+field snaps back): those pixels are blanked in every frame, whatever the scene or effect.
 
 ```elixir
 HomeLed.led_count()            # 1
 HomeLed.set_led_count(60)      # persisted; the strip repaints at the new length
 HomeLed.color_order()          # :grb
 HomeLed.set_color_order(:grbw) # persisted too; 3-channel :rgb ... :bgr, RGBW :rgbw ... :bgrw
+HomeLed.set_disabled_leds("3-8, 10") # persisted; "" for none, {:error, why} if invalid
 HomeLed.set_on(true)           # the same controls Home Assistant has
 HomeLed.set_color({1.0, 0.3, 0.0})
 HomeLed.set_brightness(0.8)

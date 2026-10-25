@@ -7,9 +7,11 @@ defmodule HomeLed.Strip do
   cut to the strip's length. Frames are packed into the strip's channel order
   (`HomeLed.Settings.color_order/0`, persisted, `:grb` for WS2812, `:grbw` for SK6812 RGBW
   with the white channel derived from the colour), encoded 4 SPI bits per data bit
-  (`HomeLed.SpiEncoder`) and written in one transfer.
+  (`HomeLed.SpiEncoder`) and written in one transfer. Pixels in the disabled ranges
+  (`HomeLed.Settings.disabled_ranges/0`, persisted) are blanked in every frame first.
 
-  The last thing shown is kept, so a change of LED count or colour order repaints
+  The last thing shown is kept, so a change of LED count, colour order or disabled
+  ranges repaints
   straight away, and the strip can be asked what it shows (`current/1`).
 
   This is also the `Home.Light.Driver` behind the `:light` capability the node vends
@@ -23,7 +25,7 @@ defmodule HomeLed.Strip do
   use GenServer
   require Logger
 
-  alias HomeLed.{Color, Settings, SpiEncoder}
+  alias HomeLed.{Color, LedRanges, Settings, SpiEncoder}
 
   @bytes_per_led 3
   # Default size of the spidev transfer buffer on the Pi. Frames above this fail
@@ -82,6 +84,7 @@ defmodule HomeLed.Strip do
       spi: open_spi(devices),
       order: Settings.color_order(),
       count: Settings.led_count(),
+      disabled: Settings.disabled_ranges(),
       shown: {:color, {0, 0, 0}}
     }
 
@@ -129,6 +132,18 @@ defmodule HomeLed.Strip do
     end
   end
 
+  def handle_info(%PropertyTable.Event{property: ["leds", "disabled"], value: ranges}, state)
+      when is_list(ranges) and ranges != state.disabled do
+    if LedRanges.valid?(ranges) do
+      Logger.info("strip leaves LEDs #{inspect(LedRanges.format(ranges))} dark")
+      state = %{state | disabled: ranges}
+      paint(state)
+      {:noreply, state}
+    else
+      {:noreply, state}
+    end
+  end
+
   def handle_info(_msg, state), do: {:noreply, state}
 
   ## Internals
@@ -152,8 +167,8 @@ defmodule HomeLed.Strip do
 
   defp paint(%{spi: nil}), do: :ok
 
-  defp paint(%{spi: spi, order: order, count: count, shown: shown}) do
-    rgb = frame(shown, count)
+  defp paint(%{spi: spi, order: order, count: count, disabled: disabled, shown: shown}) do
+    rgb = shown |> frame(count) |> LedRanges.blank(disabled, @bytes_per_led)
     buffer = SpiEncoder.encode(Color.pack_frame(rgb, order))
     warn_if_oversized(buffer)
 

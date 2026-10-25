@@ -26,6 +26,7 @@ defmodule HomeLed.SettingsTest do
     {:ok, sup} = Supervisor.start_link([{Settings, dir: dir}], strategy: :one_for_one)
     assert Settings.led_count() == 1
     assert Settings.color_order() == :grb
+    assert Settings.disabled_ranges() == []
 
     Settings.subscribe()
     assert :ok = Settings.set_led_count(60)
@@ -35,11 +36,17 @@ defmodule HomeLed.SettingsTest do
     assert Settings.led_count() == 60
     assert Settings.color_order() == :bgr
     assert_raise FunctionClauseError, fn -> apply(Settings, :set_color_order, [:xyz]) end
+    assert :ok = Settings.set_disabled_ranges("10-12, 3")
+    assert_receive %PropertyTable.Event{property: ["leds", "disabled"], value: [{3, 3}, {10, 12}]}
+    assert {:error, _} = Settings.set_disabled_ranges("3, 1-5")
+    assert {:error, _} = Settings.set_disabled_ranges([{5, 1}])
+    assert Settings.disabled_ranges() == [{3, 3}, {10, 12}]
     Supervisor.stop(sup)
 
     {:ok, sup} = Supervisor.start_link([{Settings, dir: dir}], strategy: :one_for_one)
     assert Settings.led_count() == 60
     assert Settings.color_order() == :bgr
+    assert Settings.disabled_ranges() == [{3, 3}, {10, 12}]
     Supervisor.stop(sup)
   end
 end

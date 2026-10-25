@@ -7,7 +7,8 @@ defmodule HomeLed do
     * a `:light` capability on the home cluster, through home_base (`Home.Light`).
 
   `HomeLed.Scene` decides what the strip shows and `HomeLed.Strip` drives it; how many
-  pixels it has and their channel order are persisted settings (`HomeLed.Settings`).
+  pixels it has, their channel order and which of them stay dark are persisted settings
+  (`HomeLed.Settings`).
   These functions are the IEx-friendly front door.
   """
 
@@ -34,6 +35,19 @@ defmodule HomeLed do
   """
   @spec set_color_order(HomeLed.Color.order()) :: :ok
   defdelegate set_color_order(order), to: Settings
+
+  @doc "The LEDs the strip leaves dark, as the text Home Assistant shows (`\"3-8, 10-200\"`)."
+  @spec disabled_leds() :: String.t()
+  def disabled_leds, do: HomeLed.LedRanges.format(Settings.disabled_ranges())
+
+  @doc """
+  Set which LEDs the strip leaves dark: `"5"`, `"3-8"` or `"3-8, 10-200"` (1-indexed,
+  ranges separated by commas, semicolons or spaces; `""` for none). Overlapping ranges
+  are rejected. Persisted; the strip repaints straight away.
+  """
+  @spec set_disabled_leds(String.t() | HomeLed.LedRanges.ranges()) ::
+          :ok | {:error, String.t()}
+  defdelegate set_disabled_leds(ranges), to: Settings, as: :set_disabled_ranges
 
   @doc "What the strip shows: `%{on, color, brightness, effect}` (see `HomeLed.Scene`)."
   @spec scene() :: Scene.t()
