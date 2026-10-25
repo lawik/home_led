@@ -14,7 +14,11 @@ defmodule HomeLed.SettingsTest do
     dir =
       Path.join(System.tmp_dir!(), "home_led_settings_test_#{System.unique_integer([:positive])}")
 
-    on_exit(fn -> File.rm_rf!(dir) end)
+    on_exit(fn ->
+      File.rm_rf!(dir)
+      {:ok, _} = Application.ensure_all_started(:home_led)
+    end)
+
     {:ok, dir: dir}
   end
 

@@ -7,7 +7,8 @@ defmodule HomeLed.Settings do
       persisted yet it is 1, so a fresh device lights a single pixel rather than a blind
       guess at a strip length.
     * `["leds", "color_order"]` - the channel order the strip's chips expect, `:grb`
-      (WS2812) by default. See `t:HomeLed.Color.order/0`.
+      (WS2812) by default; the orders ending in `w` are for RGBW chips such as the SK6812.
+      See `t:HomeLed.Color.order/0`.
     * `["light", "scene"]` - what the strip shows (`HomeLed.Scene`): on/off, colour,
       brightness and effect, so a power cycle brings the same light back.
 
@@ -22,7 +23,7 @@ defmodule HomeLed.Settings do
   @scene_key ["light", "scene"]
   @default_count 1
   @default_order :grb
-  @orders [:rgb, :rbg, :grb, :gbr, :brg, :bgr]
+  @orders HomeLed.Color.orders()
 
   @doc false
   def child_spec(opts) do

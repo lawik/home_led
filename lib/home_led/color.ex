@@ -10,7 +10,18 @@ defmodule HomeLed.Color do
   import Bitwise
 
   @type rgb :: {byte(), byte(), byte()}
-  @type order :: :rgb | :rbg | :grb | :gbr | :brg | :bgr
+
+  @typedoc """
+  The channel order a strip's chips expect. Three-channel orders for WS2812 and the like
+  (`:grb` is the WS2812), four-channel ones ending in `w` for RGBW chips such as the SK6812
+  (`:grbw` is the common one). A four-channel strip gets the colour's white part on its
+  white LED: `w = min(r, g, b)` is taken out of the three colours and sent as white, so
+  pure white lights only the white LED and a saturated orange leaves it dark.
+  """
+  @type order ::
+          :rgb | :rbg | :grb | :gbr | :brg | :bgr | :rgbw | :rbgw | :grbw | :gbrw | :brgw | :bgrw
+
+  @orders [:rgb, :rbg, :grb, :gbr, :brg, :bgr, :rgbw, :rbgw, :grbw, :gbrw, :brgw, :bgrw]
 
   @third div(256, 3)
   @two_thirds div(512, 3)
@@ -47,11 +58,20 @@ defmodule HomeLed.Color do
     {div(r * level, 255), div(g * level, 255), div(b * level, 255)}
   end
 
+  @doc "Every channel order, three-channel ones first. See `t:order/0`."
+  @spec orders() :: [order()]
+  def orders, do: @orders
+
+  @doc "How many bytes one pixel takes on the wire in this order: 3, or 4 with white."
+  @spec bytes_per_pixel(order()) :: 3 | 4
+  def bytes_per_pixel(order) when order in [:rgbw, :rbgw, :grbw, :gbrw, :brgw, :bgrw], do: 4
+  def bytes_per_pixel(order) when order in @orders, do: 3
+
   @doc """
-  Packs one pixel into the three bytes its strip expects. Which channel goes first
-  differs per chip: a WS2812 pixel takes `:grb`.
+  Packs one pixel into the bytes its strip expects. Which channel goes first differs per
+  chip: a WS2812 pixel takes `:grb`, an SK6812 RGBW pixel `:grbw` (see `t:order/0`).
   """
-  @spec pack(rgb(), order()) :: <<_::24>>
+  @spec pack(rgb(), order()) :: <<_::24>> | <<_::32>>
   def pack({r, g, b}, :rgb), do: <<r, g, b>>
   def pack({r, g, b}, :rbg), do: <<r, b, g>>
   def pack({r, g, b}, :grb), do: <<g, r, b>>
@@ -59,7 +79,24 @@ defmodule HomeLed.Color do
   def pack({r, g, b}, :brg), do: <<b, r, g>>
   def pack({r, g, b}, :bgr), do: <<b, g, r>>
 
-  @doc "Reorders a whole RGB frame (three bytes per pixel) into the strip's channel order."
+  def pack({r, g, b}, order) when order in [:rgbw, :rbgw, :grbw, :gbrw, :brgw, :bgrw] do
+    w = Enum.min([r, g, b])
+    {r, g, b} = {r - w, g - w, b - w}
+
+    case order do
+      :rgbw -> <<r, g, b, w>>
+      :rbgw -> <<r, b, g, w>>
+      :grbw -> <<g, r, b, w>>
+      :gbrw -> <<g, b, r, w>>
+      :brgw -> <<b, r, g, w>>
+      :bgrw -> <<b, g, r, w>>
+    end
+  end
+
+  @doc """
+  Reorders a whole RGB frame (three bytes per pixel) into the strip's channel order, four
+  bytes per pixel for an RGBW order.
+  """
   @spec pack_frame(binary(), order()) :: binary()
   def pack_frame(frame, :rgb), do: frame
 

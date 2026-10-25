@@ -48,7 +48,12 @@ defmodule HomeLed.Application do
 
         broker ->
           entities =
-            [HomeLed.Entities.StripLight, HomeLed.Entities.StripEffect] ++
+            [
+              HomeLed.Entities.StripLight,
+              HomeLed.Entities.StripEffect,
+              HomeLed.Entities.LedCount,
+              HomeLed.Entities.ColorOrder
+            ] ++
               if(gpio_led, do: [HomeLed.Entities.GpioLight], else: [])
 
           homex =

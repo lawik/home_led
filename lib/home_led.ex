@@ -29,8 +29,8 @@ defmodule HomeLed do
   defdelegate color_order(), to: Settings
 
   @doc """
-  Set the strip's channel order, one of `:rgb`, `:rbg`, `:grb`, `:gbr`, `:brg`, `:bgr`.
-  Persisted; the strip repaints in the new order straight away.
+  Set the strip's channel order: `:grb` for WS2812, `:grbw` for SK6812 RGBW, or any other
+  of `HomeLed.Color.orders/0`. Persisted; the strip repaints in the new order straight away.
   """
   @spec set_color_order(HomeLed.Color.order()) :: :ok
   defdelegate set_color_order(order), to: Settings

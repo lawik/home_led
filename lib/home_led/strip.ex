@@ -5,8 +5,9 @@ defmodule HomeLed.Strip do
   The strip is `HomeLed.Settings.led_count/0` pixels long (default 1, persisted). A
   colour fills every pixel; a frame paints them one by one and is padded with black or
   cut to the strip's length. Frames are packed into the strip's channel order
-  (`HomeLed.Settings.color_order/0`, persisted, `:grb` for WS2812), encoded 4 SPI bits
-  per data bit (`HomeLed.SpiEncoder`) and written in one transfer.
+  (`HomeLed.Settings.color_order/0`, persisted, `:grb` for WS2812, `:grbw` for SK6812 RGBW
+  with the white channel derived from the colour), encoded 4 SPI bits per data bit
+  (`HomeLed.SpiEncoder`) and written in one transfer.
 
   The last thing shown is kept, so a change of LED count or colour order repaints
   straight away, and the strip can be asked what it shows (`current/1`).
