@@ -1,0 +1,17 @@
+# Copy to .envrc (untracked), fill in, then `direnv allow` or `source .envrc`.
+# config/target.exs reads these at compile time and refuses to build without them.
+
+# WiFi networks the device tries, in this order. Add _3, _4, ... for more.
+export HOME_LED_WIFI_SSID_1=""
+export HOME_LED_WIFI_PSK_1=""
+export HOME_LED_WIFI_SSID_2=""
+export HOME_LED_WIFI_PSK_2=""
+
+# MQTT broker for Homex (Home Assistant MQTT discovery).
+export MQTT_HOST=""
+export MQTT_PORT="1883"
+export MQTT_USERNAME=""
+export MQTT_PASSWORD=""
+
+# Where scripts/vendor_emerge.sh puts emerge for home_base's path dependency.
+export EMERGE_PATH="$(pwd)/../_vendor/emerge-home"
